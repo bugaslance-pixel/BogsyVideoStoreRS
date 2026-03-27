@@ -1,0 +1,36 @@
+## Build
+bin/
+obj/
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## JetBrains
+.idea/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Logs
+*.log
+logs/
+
+## Publish
+**/publish/
+**/out/
+
+## Local settings / secrets
+appsettings.Development.json
+
+## Database files (if ever used)
+*.mdf
+*.ldf
+*.sqlite
+*.db
+*.db-shm
+*.db-wal

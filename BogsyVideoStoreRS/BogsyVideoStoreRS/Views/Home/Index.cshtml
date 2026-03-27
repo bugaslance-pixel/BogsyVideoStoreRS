@@ -1,0 +1,464 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_Layout";
+    bool isLoggedIn = ViewBag.IsLoggedIn == true;
+
+    // Build inline style strings with proper quoting for Razor
+    string hideStyle  = "display:none;";
+    string emptyStyle = "";
+}
+
+@*
+    ?? Black-screen fix ??????????????????????????????????????????????????????
+    The previous code emitted:  style=display:none;   (no quotes ? ignored)
+    This code emits:            style="display:none;" (valid HTML attribute)
+    ?????????????????????????????????????????????????????????????????????????
+*@
+
+<section id="login-page" style="@(isLoggedIn ? hideStyle : emptyStyle)">
+    <div class="login-blob login-blob--1"></div>
+    <div class="login-blob login-blob--2"></div>
+    <div class="login-blob login-blob--3"></div>
+
+    <div class="login-split-card">
+        <!-- LEFT — Login Form -->
+        <div class="login-form-panel">
+            <h2 class="login-form-panel__title">Sign In</h2>
+            <p class="login-form-panel__subtitle">Access your BVS dashboard</p>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="mt-4">
+                <div class="mb-4">
+                    <label class="login-label">Username</label>
+                    <div class="login-input-group">
+                        <i class="fas fa-user login-input-icon"></i>
+                        <input id="loginUsername" type="text" class="login-input" placeholder="admin" autocomplete="username" required>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="login-label">Password</label>
+                    <div class="login-input-group">
+                        <i class="fas fa-lock login-input-icon"></i>
+                        <input id="loginPassword" type="password" class="login-input" placeholder="••••••••" autocomplete="current-password" required>
+                    </div>
+                </div>
+                <button type="submit" class="login-btn">
+                    <span id="loginSpinner" class="spinner-border spinner-border-sm me-2" style="display:none;"></span>
+                    <i class="fas fa-sign-in-alt me-2"></i> Sign In
+                </button>
+                <div id="loginError" class="mt-2 text-danger small" style="display:none;"></div>
+            </form>
+        </div>
+
+        <!-- RIGHT — Welcome Panel -->
+        <div class="login-welcome">
+            <div class="login-welcome__logo"><i class="fas fa-play-circle"></i></div>
+            <h1 class="login-welcome__title">Welcome!</h1>
+            <div class="login-welcome__divider"></div>
+            <p class="login-welcome__desc">
+                Your all-in-one video rental management system.<br>
+                Manage your library, customers, and rentals with ease.
+            </p>
+            <div class="login-welcome__features">
+                <span><i class="fas fa-film me-2"></i>Video Library</span>
+                <span><i class="fas fa-users me-2"></i>Customer Records</span>
+                <span><i class="fas fa-chart-bar me-2"></i>Smart Reports</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<aside class="sidebar" id="sidebar" style="@(isLoggedIn ? emptyStyle : hideStyle)">
+    <a href="#" class="logo"><i class="fas fa-play-circle"></i> BVS</a>
+    <nav>
+        <button class="nav-link" onclick="showPage('dashboard')">
+            <i class="fas fa-th-large"></i> Dashboard
+        </button>
+        <button class="nav-link" onclick="showPage('videos')">
+            <i class="fas fa-video"></i> Video Library
+        </button>
+        <button class="nav-link" onclick="showPage('archived')">
+            <i class="fas fa-archive"></i> Archived Videos
+        </button>
+        <button class="nav-link" onclick="showPage('customers')">
+            <i class="fas fa-users"></i> Customers
+        </button>
+        <button class="nav-link" onclick="showPage('rent')">
+            <i class="fas fa-key"></i> Rent Video
+        </button>
+        <button class="nav-link" onclick="showPage('return')">
+            <i class="fas fa-undo"></i> Return Video
+        </button>
+        <button class="nav-link" onclick="showPage('reports')">
+            <i class="fas fa-file-invoice"></i> Reports
+        </button>
+        <hr style="border-color:var(--glass-border)">
+        <button class="nav-link text-danger" onclick="handleLogout()">
+            <i class="fas fa-power-off"></i> Logout
+        </button>
+    </nav>
+</aside>
+
+<main class="main-content" id="main-content" style="@(isLoggedIn ? emptyStyle : hideStyle)">
+    <!-- TOP NAV / SEARCH -->
+    <header class="top-nav">
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Search videos..." oninput="handleSearch(this.value)">
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <i class="fas fa-bell"></i>
+            <div id="overdueBadgeContainer"></div>
+            <div class="user-profile" style="width:35px;height:35px;background:var(--primary-accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;">B</div>
+        </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="page-section">
+        <div class="row g-4 mb-5">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-film"></i></div>
+                    <p class="text-muted mb-1 small">Total Videos</p>
+                    <h3 id="stat-total">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
+                    <p class="text-muted mb-1 small">Total Customers</p>
+                    <h3 id="stat-customers">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-sign-out-alt"></i></div>
+                    <p class="text-muted mb-1 small">Videos Rented</p>
+                    <h3 id="stat-out">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-check-double"></i></div>
+                    <p class="text-muted mb-1 small">Available</p>
+                    <h3 id="stat-in">0</h3>
+                </div>
+            </div>
+        </div>
+        <h4 class="mb-4">Trending at Bogsy's</h4>
+        <div class="movie-grid" id="trending-grid"></div>
+    </section>
+
+    <!-- VIDEO LIBRARY -->
+    <section id="videos" class="page-section">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>Video Library</h3>
+            <button class="btn btn-purple" data-bs-toggle="modal" data-bs-target="#videoModal" onclick="resetVideoForm()">
+                <i class="fas fa-plus me-2"></i> Add New Video
+            </button>
+        </div>
+        <div class="mb-4">
+            <div class="search-container" style="width:100%;max-width:420px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="librarySearch" placeholder="Filter library by title or category..."
+                       oninput="filterLibrary(this.value)">
+            </div>
+        </div>
+        <div class="movie-grid" id="library-grid"></div>
+    </section>
+
+    <!-- ARCHIVED VIDEOS -->
+    <section id="archived" class="page-section">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3><i class="fas fa-archive me-2 text-warning"></i>Archived Videos</h3>
+            <small class="text-muted">Archived videos cannot be rented. Click Restore to bring them back.</small>
+        </div>
+        <div class="movie-grid" id="archived-grid"></div>
+    </section>
+
+    <!-- RENT VIDEO -->
+    <section id="rent" class="page-section">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="stat-card shadow-lg" style="background:#16161d;">
+                    <h4 class="mb-4 text-white fw-bold">Rent Video</h4>
+                    <form onsubmit="handleRent(event)">
+                        <div class="mb-3">
+                            <label class="form-label-visible">Customer</label>
+                            <select class="form-select" id="rentCustomerSelect" required>
+                                <option value="">Select Customer</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label-visible">Video Title</label>
+                            <select class="form-select" id="rentVideoSelect" onchange="updateDueDateFromVideo()" required>
+                                <option value="">Select Video</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <label class="form-label-visible">Rent Date</label>
+                                <input type="date" class="form-control" id="rentDate" onchange="updateDueDateFromVideo()" required>
+                            </div>
+                            <div class="col">
+                                <label class="form-label-visible">Due Date <small class="text-muted">(auto)</small></label>
+                                <input type="date" class="form-control" id="dueDate" readonly>
+                            </div>
+                        </div>
+                        <button class="btn btn-purple w-100 mt-4 py-3 fs-5" type="submit">Process Rental</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RETURN VIDEO -->
+    <section id="return" class="page-section">
+        <div class="row justify-content-center">
+            <div class="col-md-7">
+                <div class="stat-card shadow-lg" style="background:#16161d;">
+                    <h4 class="mb-4 text-white fw-bold">Return Video</h4>
+                    <div class="mb-4">
+                        <label class="form-label-visible">Select from Active Rentals</label>
+                        <div class="glass-table table-responsive">
+                            <table class="table table-dark table-hover mb-0" id="activeRentalsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Rental ID</th><th>Customer</th><th>Video</th><th>Due Date</th><th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activeRentalsTbody">
+                                    <tr><td colspan="5" class="text-center text-muted">No active rentals.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <form onsubmit="handleReturn(event)">
+                        <div class="mb-3">
+                            <label class="form-label-visible">Rental ID <small class="text-muted">(click a row above or type manually)</small></label>
+                            <input type="text" class="form-control" id="returnRentalId" placeholder="e.g. R-1001" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label-visible">Return Date</label>
+                            <input type="date" class="form-control" id="returnDate" required>
+                        </div>
+                        <button class="btn btn-purple w-100 mt-2 py-3 fs-5" type="submit">Confirm Return</button>
+                    </form>
+                    <div id="returnSummary" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CUSTOMERS -->
+    <section id="customers" class="page-section">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>Customer Records</h3>
+            <button class="btn btn-purple" onclick="openAddCustomerModal()">
+                <i class="fas fa-user-plus me-2"></i> Add Customer
+            </button>
+        </div>
+        <div class="glass-table table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr><th>ID</th><th>Name</th><th>Address</th><th>Contact</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="customer-table-body">
+                    <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section id="reports" class="page-section">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>System Reports</h3>
+            <div class="d-flex gap-2 no-print">
+                <button class="btn btn-outline-light btn-sm" onclick="printReport()">
+                    <i class="fas fa-file-pdf me-2"></i> Save as PDF
+                </button>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs border-0 mb-4 no-print">
+            <li class="nav-item">
+                <button class="nav-link active" id="inventory-tab" data-bs-toggle="tab" data-bs-target="#inventoryReport">Inventory (A-Z)</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="customer-statement-tab" data-bs-toggle="tab" data-bs-target="#customerReport">Customer Statement</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="inventoryReport">
+                <div class="glass-table table-responsive">
+                    <table class="table table-dark table-bordered border-secondary mb-0">
+                        <thead class="text-center">
+                            <tr><th>Title</th><th>Category</th><th>In (Available)</th><th>Out (Rented)</th></tr>
+                        </thead>
+                        <tbody id="report-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="customerReport">
+                <div class="mb-4 no-print">
+                    <label class="form-label-visible">Select Customer to Generate Statement</label>
+                    <select class="form-select w-50" id="reportCustomerSelect" onchange="renderCustomerRentalReport()">
+                        <option value="">Choose Customer...</option>
+                    </select>
+                </div>
+                <div id="statementContent">
+                    <div class="text-center mb-4">
+                        <h4 style="color:var(--primary-accent);">Bogsy Video Store</h4>
+                        <p class="text-muted">Buhangin, Davao City — Customer Rental Statement</p>
+                        <h5 id="displayCustomerName" class="mt-3 text-white">Please select a customer</h5>
+                    </div>
+                    <div class="glass-table table-responsive">
+                        <table class="table table-dark table-bordered border-secondary mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Rental ID</th><th>Video Title</th><th>Category</th>
+                                    <th>Rent Date</th><th>Due Date</th>
+                                    <th>Penalty (&#8369;5/day)</th><th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customer-rentals-body">
+                                <tr><td colspan="7" class="text-center text-muted">No records to display.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="rentalReportTotal" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- VIDEO MODAL (Add / Edit) -->
+<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark border-secondary">
+                <h5 class="modal-title" id="modalTitle">Add New Video</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-dark">
+                <form id="videoForm">
+                    <div class="mb-3">
+                        <label class="form-label-visible">Movie Title</label>
+                        <input type="text" id="vTitle" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-visible">Category</label>
+                            <select id="vCategory" class="form-select" onchange="updatePriceHint()" required>
+                                <option value="DVD">DVD (&#8369;50)</option>
+                                <option value="VCD">VCD (&#8369;25)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-visible">Max Rent Days (1–3)</label>
+                            <input type="number" id="vDays" class="form-control" min="1" max="3" value="3" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-visible">Stock Quantity</label>
+                            <input type="number" id="vStock" class="form-control" min="1" value="5" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label-visible">Price (Auto)</label>
+                            <div class="form-control" id="vPriceHint" style="background:rgba(255,255,255,0.05);color:var(--primary-accent);font-weight:bold;">&#8369;50.00</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-visible">Movie Poster</label>
+                        <div class="btn-group w-100 mb-2" role="group">
+                            <input type="radio" class="btn-check" name="posterMode" id="posterModeUrl" value="url" autocomplete="off" checked>
+                            <label class="btn btn-outline-secondary btn-sm" for="posterModeUrl">
+                                <i class="fas fa-link me-1"></i> Image URL
+                            </label>
+                            <input type="radio" class="btn-check" name="posterMode" id="posterModeFile" value="file" autocomplete="off">
+                            <label class="btn btn-outline-secondary btn-sm" for="posterModeFile">
+                                <i class="fas fa-upload me-1"></i> Upload JPG / PNG
+                            </label>
+                        </div>
+                        <div id="posterUrlSection">
+                            <input type="text" id="vPoster" class="form-control" placeholder="https://...">
+                        </div>
+                        <div id="posterFileSection" style="display:none;">
+                            <input type="file" id="vPosterFile" class="form-control" accept=".jpg,.jpeg,.png">
+                        </div>
+                        <div id="posterPreviewContainer" class="mt-2" style="display:none;">
+                            <img id="posterPreview" src="" alt="Poster preview"
+                                 style="max-height:140px;border-radius:6px;border:1px solid var(--glass-border);">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-purple w-100 mt-3" onclick="saveVideo()">Save to Library</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CUSTOMER MODAL (Add / Edit) -->
+<div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark border-secondary">
+                <h5 class="modal-title" id="customerModalTitle">Add Customer</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-dark">
+                <form id="customerForm">
+                    <div class="mb-3">
+                        <label class="form-label-visible">Full Name</label>
+                        <input type="text" id="cName" class="form-control" placeholder="e.g. Juan Dela Cruz" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-visible">Address</label>
+                        <input type="text" id="cAddress" class="form-control" placeholder="e.g. Buhangin, Davao City" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-visible">Contact Number</label>
+                        <input type="text" id="cContact" class="form-control" placeholder="e.g. 09123456789" required>
+                    </div>
+                    <button type="button" class="btn btn-purple w-100 mt-3" onclick="saveCustomer()">Save Customer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" style="position:fixed;bottom:20px;right:20px;background:#10b981;color:white;padding:12px 24px;border-radius:8px;display:none;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.5);max-width:360px;">
+    Action completed successfully!
+</div>
+
+@section Scripts {
+    <script src="~/js/login-enhancements.js" asp-append-version="true"></script>
+    <script>
+        function filterLibrary(val) {
+            const q = val.toLowerCase().trim();
+            const filtered = q
+                ? videoLibrary.filter(v => v.title.toLowerCase().includes(q) || v.category.toLowerCase().includes(q))
+                : videoLibrary;
+            renderLibraryGrid(filtered);
+        }
+
+        window.addEventListener('load', function () {
+            @if (isLoggedIn)
+            {
+                <text>
+                // Session active — ensure sidebar & main-content are visible, then load dashboard
+                document.getElementById('sidebar').style.display     = 'block';
+                document.getElementById('main-content').style.display = 'block';
+                document.getElementById('login-page').style.display   = 'none';
+                showPage('dashboard');
+                </text>
+            }
+        });
+    </script>
+}
